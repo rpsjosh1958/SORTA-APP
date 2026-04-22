@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "181388128583",
+    "project_id": "sorta-3df17",
+    "storage_bucket": "sorta-3df17.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:181388128583:android:3f8d5508c0ef20ae52dc62",
+        "android_client_info": {
+          "package_name": "com.sorta.sorta"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAAsfFHn8k8Jj2ixDeXJh9Vo_hSSImabY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

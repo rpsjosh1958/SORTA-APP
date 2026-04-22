@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+
+    // Fields managed exclusively by Cloud Functions — clients cannot touch them
+    function noRankTampering() {
+      return !request.resource.data.diff(resource.data)
+        .affectedKeys().hasAny(['worldRank', 'clubRank', 'clubScore', 'memberCount']);
+    }
+
+    // ── Username lookup ───────────────────────────────────────────────────────
+    // Public read so sign-in can resolve username → email before auth exists.
+    // Each doc: { email, uid }. Written only by the owning user at sign-up.
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if isAuthed() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ── Users ────────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      // Leaderboard reads need public user info
+      allow read: if isAuthed();
+
+      // Only the user creates their own document
+      allow create: if isOwner(uid);
+
+      // User can update their own doc but cannot self-assign ranks
+      allow update: if isOwner(uid) && noRankTampering();
+
+      allow delete: if false;
+
+      // Match history — private, immutable once written
+      match /matches/{matchId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid);
+        allow update, delete: if false;
+      }
+    }
+
+    // ── Questions ─────────────────────────────────────────────────────────────
+    // Read-only for authenticated users; writes only via Admin SDK / Functions
+    match /questions/{questionId} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    // ── Daily Sorts ───────────────────────────────────────────────────────────
+    match /dailySorts/{date} {
+      allow read: if isAuthed();
+      allow write: if false;
+    }
+
+    // ── Clubs ─────────────────────────────────────────────────────────────────
+    match /clubs/{clubId} {
+      allow read: if isAuthed();
+
+      // Any authed user can create a club
+      allow create: if isAuthed()
+        && request.resource.data.creatorUid == request.auth.uid;
+
+      // Only creator can update metadata; score/rank/memberCount are Functions-only
+      allow update: if isAuthed()
+        && resource.data.creatorUid == request.auth.uid
+        && noRankTampering();
+
+      allow delete: if isAuthed()
+        && resource.data.creatorUid == request.auth.uid;
+
+      // Club member sub-collection
+      match /members/{memberId} {
+        allow read: if isAuthed();
+
+        // Join: user can only add themselves
+        allow create: if isOwner(memberId);
+
+        // Leave: user can only remove themselves
+        allow delete: if isOwner(memberId);
+
+        // Members can only increment their own clubScore
+        allow update: if isOwner(memberId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clubScore']);
+      }
+    }
+  }
+}
