@@ -15,6 +15,7 @@ class UserProfile {
   final Timestamp? dailySortDate;
   final List<String> clubIds;
   final String? primaryClubId;
+  final Map<String, bool> completedCategories;
 
   const UserProfile({
     required this.uid,
@@ -27,6 +28,7 @@ class UserProfile {
     required this.dailySortDate,
     required this.clubIds,
     required this.primaryClubId,
+    this.completedCategories = const {},
   });
 
   bool get hasPlayedDailySort {
@@ -67,6 +69,7 @@ class UserProfile {
       dailySortDate: d['dailySortDate'] as Timestamp?,
       clubIds: List<String>.from(d['clubIds'] ?? []),
       primaryClubId: d['primaryClubId'] as String?,
+      completedCategories: Map<String, bool>.from(d['completedCategories'] ?? {}),
     );
   }
 }

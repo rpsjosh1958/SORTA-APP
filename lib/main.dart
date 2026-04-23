@@ -4,9 +4,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'features/home/view/main_screen.dart';
 import 'features/auth/view/login_screen.dart';
 import 'features/splash/splash_screen.dart';
+import 'features/splash/profile_gate.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
@@ -118,7 +118,7 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
       data: (user) {
         if (user == null) return const LoginScreen();
         _saveFcmToken(user.uid);
-        return MainScreen(initialIndex: _pendingNavIndex >= 0 ? _pendingNavIndex : 0);
+        return ProfileGate(initialIndex: _pendingNavIndex >= 0 ? _pendingNavIndex : 0);
       },
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),

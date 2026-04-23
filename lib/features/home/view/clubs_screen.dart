@@ -289,9 +289,22 @@ class _CreateClubDialog extends StatefulWidget {
 
 class _CreateClubDialogState extends State<_CreateClubDialog> {
   final _controller = TextEditingController();
+  final List<String> _selectedCategories = ['ALL'];
   bool _loading = false;
   String? _createdCode;
   String? _error;
+
+  static const _allCategories = [
+    'ALL',
+    'Sports',
+    'Entertainment',
+    'Pop Culture',
+    'Social Media',
+    'Science',
+    'Math',
+    'Tech',
+    'World Facts'
+  ];
 
   @override
   void dispose() {
@@ -299,15 +312,43 @@ class _CreateClubDialogState extends State<_CreateClubDialog> {
     super.dispose();
   }
 
+  void _toggleCategory(String cat) {
+    setState(() {
+      if (cat == 'ALL') {
+        _selectedCategories.clear();
+        _selectedCategories.add('ALL');
+      } else {
+        _selectedCategories.remove('ALL');
+        if (_selectedCategories.contains(cat)) {
+          _selectedCategories.remove(cat);
+          if (_selectedCategories.isEmpty) _selectedCategories.add('ALL');
+        } else {
+          _selectedCategories.add(cat);
+        }
+      }
+    });
+  }
+
   Future<void> _submit() async {
     final name = _controller.text.trim();
     if (name.isEmpty) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final code = await widget.ref.read(clubActionsProvider.notifier).createClub(name);
-      setState(() { _createdCode = code; _loading = false; });
+      final code = await widget.ref
+          .read(clubActionsProvider.notifier)
+          .createClub(name, _selectedCategories);
+      setState(() {
+        _createdCode = code;
+        _loading = false;
+      });
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
@@ -365,28 +406,64 @@ class _CreateClubDialogState extends State<_CreateClubDialog> {
     return AlertDialog(
       backgroundColor: theme.appColors.surface,
       title: Text('CREATE CLUB', style: theme.appTextTheme.heading?.copyWith(fontSize: 20)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            decoration: InputDecoration(
-              hintText: 'Club name',
-              hintStyle: theme.appTextTheme.body?.copyWith(
-                color: theme.appColors.onSurface?.withOpacity(0.4),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(
+                hintText: 'Club name',
+                hintStyle: theme.appTextTheme.body?.copyWith(
+                  color: theme.appColors.onSurface?.withOpacity(0.4),
+                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              style: theme.appTextTheme.body,
+              onSubmitted: (_) => _submit(),
             ),
-            style: theme.appTextTheme.body,
-            onSubmitted: (_) => _submit(),
-          ),
-          if (_error != null) ...[
+            const SizedBox(height: 20),
+            Text('CATEGORIES',
+                style: theme.appTextTheme.body?.copyWith(fontSize: 12, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
-            Text(_error!, style: TextStyle(color: theme.appColors.danger, fontSize: 12)),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _allCategories.map((cat) {
+                final isSelected = _selectedCategories.contains(cat);
+                return GestureDetector(
+                  onTap: () => _toggleCategory(cat),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? theme.appColors.primary : theme.appColors.surface,
+                      border: Border.all(color: theme.appColors.border!, width: 2),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: isSelected
+                          ? [BoxShadow(color: theme.appColors.shadow!, offset: const Offset(2, 2))]
+                          : [],
+                    ),
+                    child: Text(
+                      cat.toUpperCase(),
+                      style: theme.appTextTheme.body?.copyWith(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: isSelected ? Colors.black : theme.appColors.onSurface?.withOpacity(0.5),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: TextStyle(color: theme.appColors.danger, fontSize: 12)),
+            ],
           ],
-        ],
+        ),
       ),
       actions: [
         TextButton(

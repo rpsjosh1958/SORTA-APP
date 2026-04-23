@@ -130,7 +130,7 @@ class HomeScreen extends ConsumerWidget {
                 color: theme.appColors.accent!,
                 icon: Icons.bolt,
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             _BigStatCard(
               title: 'TOTAL SCORE',
               value: NumberFormat('#,###').format(profile?.totalScore ?? 0),

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../view_model/game_view_model.dart';
+import '../../../core/providers/user_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/dot_grid_background.dart';
 import '../../../core/widgets/neo_dropdown.dart';
@@ -32,7 +33,8 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ref.read(gameViewModelProvider).currentQuestion == null && !ref.read(gameViewModelProvider).isMatchComplete) {
+      final selected = ref.read(gameViewModelProvider).selectedCategory;
+      if (selected.isNotEmpty && ref.read(gameViewModelProvider).currentQuestion == null && !ref.read(gameViewModelProvider).isMatchComplete) {
         ref.read(gameViewModelProvider.notifier).loadNextQuestion();
       }
     });
@@ -47,14 +49,14 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
 
   void _handleSubmission(GameViewModel notifier, GameState state) {
     notifier.submitAnswer();
-    final matches = state.userOrder.where((item) {
+    final correctCount = state.userOrder.where((item) {
       final index = state.userOrder.indexOf(item);
       return state.currentQuestion?.items[index] == item;
     }).length;
 
-    if (matches == 5) {
+    if (correctCount == 5) {
       HapticFeedback.vibrate();
-    } else if (matches == 0) {
+    } else if (correctCount == 0) {
       HapticFeedback.heavyImpact();
     } else {
       HapticFeedback.mediumImpact();
@@ -112,7 +114,7 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'Match: ${gameState.currentQuestionIndex}/5',
+                    'Match: ${gameState.currentQuestionIndex}/$kMatchSize',
                     style: theme.appTextTheme.body?.copyWith(fontWeight: FontWeight.w900, fontSize: 10),
                   ),
                   Text(
@@ -138,6 +140,20 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
   }
 
   Widget _buildGameBody(BuildContext context, GameState gameState, GameViewModel gameNotifier, ThemeData theme) {
+    if (gameState.isLoadingQuestions) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 24),
+            Text('PREPARING PUZZLES...',
+                style: theme.appTextTheme.body?.copyWith(fontWeight: FontWeight.w900)),
+          ],
+        ),
+      );
+    }
+
     if (gameState.isMatchComplete) {
       return Center(
         child: Padding(
@@ -162,7 +178,18 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
     }
 
     if (gameState.currentQuestion == null) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.style_outlined, size: 80, color: theme.appColors.onSurface?.withOpacity(0.2)),
+            const SizedBox(height: 24),
+            Text('READY TO SORT?', style: theme.appTextTheme.heading),
+            const SizedBox(height: 8),
+            Text('Select a category to begin', style: theme.appTextTheme.body),
+          ],
+        ),
+      );
     }
 
     return Column(
@@ -285,10 +312,10 @@ class _GameScreenState extends ConsumerState<GameScreen> with SingleTickerProvid
               Expanded(
                 child: _CustomButton(
                   onPressed: gameState.isAnswered
-                      ? (gameState.currentQuestionIndex < 5 ? gameNotifier.loadNextQuestion : null)
+                      ? (gameState.currentQuestionIndex < kMatchSize ? gameNotifier.loadNextQuestion : null)
                       : (gameState.isGameStarted ? () => _handleSubmission(gameNotifier, gameState) : () {}),
-                  text: gameState.isAnswered ? (gameState.currentQuestionIndex < 5 ? 'NEXT' : 'FINISHING...') : 'SUBMIT',
-                  enabled: (gameState.isGameStarted || gameState.isAnswered) && !(gameState.isAnswered && gameState.currentQuestionIndex == 5),
+                  text: gameState.isAnswered ? (gameState.currentQuestionIndex < kMatchSize ? 'NEXT' : 'FINISHING...') : 'SUBMIT',
+                  enabled: (gameState.isGameStarted || gameState.isAnswered) && !(gameState.isAnswered && gameState.currentQuestionIndex == kMatchSize),
                 ),
               ),
             ],
@@ -327,26 +354,64 @@ class _ResultRow extends StatelessWidget {
   }
 }
 
-const _kCategories = ['ALL', 'Sports', 'Entertainment', 'Pop Culture', 'Social Media'];
+const _kCategories = [
+  'ALL',
+  'Sports',
+  'Entertainment',
+  'Pop Culture',
+  'Social Media',
+  'Science',
+  'Math',
+  'Tech',
+  'World Facts'
+];
 
-class _CategoryDropdown extends StatelessWidget {
+class _CategoryDropdown extends ConsumerWidget {
   final GameState gameState;
   final GameViewModel gameNotifier;
 
   const _CategoryDropdown({required this.gameState, required this.gameNotifier});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final profile = ref.watch(userProfileProvider).asData?.value;
     final enabled = !gameState.isGameStarted || gameState.isAnswered || gameState.isMatchComplete;
+
+    String label = gameState.selectedCategory.isEmpty ? 'SELECT' : gameState.selectedCategory.toUpperCase();
+    if (gameState.selectedCategory == 'ALL' && gameState.selectedSubCategories.isNotEmpty) {
+      label = 'ALL (${gameState.selectedSubCategories.length})';
+    }
 
     return Padding(
       padding: const EdgeInsets.only(left: 12),
       child: Center(
         child: NeoDropdown<String>(
-          items: _kCategories.map((c) => NeoDropdownItem(value: c, label: c)).toList(),
+          items: _kCategories.map((c) {
+            final isCompleted = profile?.completedCategories[c] ?? false;
+            return NeoDropdownItem(
+              value: c,
+              label: c,
+              isCompleted: isCompleted,
+            );
+          }).toList(),
           currentValue: gameState.selectedCategory,
-          onSelected: gameNotifier.setCategory,
+          onSelected: (cat) {
+            if (cat == 'ALL') {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => _CategorySelectorDialog(
+                  initialSelected: gameState.selectedSubCategories,
+                  onSelected: (selected) {
+                    gameNotifier.setCategory('ALL', selected);
+                  },
+                ),
+              );
+            } else {
+              gameNotifier.setCategory(cat);
+            }
+          },
           enabled: enabled,
           minMenuWidth: 160,
           child: Container(
@@ -364,7 +429,7 @@ class _CategoryDropdown extends StatelessWidget {
               children: [
                 Flexible(
                   child: Text(
-                    gameState.selectedCategory.toUpperCase(),
+                    label,
                     style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, overflow: TextOverflow.ellipsis),
                   ),
                 ),
@@ -374,6 +439,126 @@ class _CategoryDropdown extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CategorySelectorDialog extends StatefulWidget {
+  final List<String> initialSelected;
+  final Function(List<String>) onSelected;
+
+  const _CategorySelectorDialog({
+    required this.onSelected,
+    this.initialSelected = const [],
+  });
+
+  @override
+  State<_CategorySelectorDialog> createState() => _CategorySelectorDialogState();
+}
+
+class _CategorySelectorDialogState extends State<_CategorySelectorDialog> {
+  late List<String> _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = List<String>.from(widget.initialSelected);
+  }
+
+  void _toggle(String cat) {
+    setState(() {
+      if (_selected.contains(cat)) {
+        _selected.remove(cat);
+      } else {
+        _selected.add(cat);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final profile = ProviderScope.containerOf(context).read(userProfileProvider).asData?.value;
+    final validCategories = _kCategories.where((c) => c != 'ALL').toList();
+    final canStart = _selected.length >= 5;
+
+    return AlertDialog(
+      backgroundColor: theme.appColors.surface,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: theme.appColors.border!, width: 3),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      title: Text('PICK 5+ CATEGORIES',
+          style: theme.appTextTheme.heading?.copyWith(fontSize: 20)),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: validCategories.map((cat) {
+              final isSelected = _selected.contains(cat);
+              final isDone = profile?.completedCategories[cat] ?? false;
+
+              return GestureDetector(
+                onTap: () => _toggle(cat),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? theme.appColors.primary : theme.appColors.surface,
+                    border: Border.all(
+                      color: isSelected ? Colors.black : theme.appColors.border!.withOpacity(0.3),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: isSelected
+                        ? [BoxShadow(color: theme.appColors.shadow!, offset: const Offset(2, 2))]
+                        : [],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        cat.toUpperCase(),
+                        style: theme.appTextTheme.body?.copyWith(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          color: isSelected ? Colors.black : theme.appColors.onSurface?.withOpacity(0.5),
+                        ),
+                      ),
+                      if (isDone) ...[
+                        const SizedBox(width: 4),
+                        Icon(Icons.check_circle, size: 12, color: Colors.green.shade700),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('CANCEL', style: theme.appTextTheme.button?.copyWith(fontSize: 14)),
+        ),
+        ElevatedButton(
+          onPressed: canStart
+              ? () {
+                  widget.onSelected(_selected);
+                  Navigator.pop(context);
+                }
+              : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: theme.appColors.primary,
+            foregroundColor: Colors.black,
+            disabledBackgroundColor: Colors.grey.shade300,
+          ),
+          child: Text(canStart ? 'OK' : 'PICK ${5 - _selected.length} MORE',
+              style: theme.appTextTheme.button?.copyWith(fontSize: 14)),
+        ),
+      ],
     );
   }
 }
@@ -650,3 +835,4 @@ class _SortCard extends StatelessWidget {
     );
   }
 }
+

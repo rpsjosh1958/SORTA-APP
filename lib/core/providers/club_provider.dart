@@ -73,7 +73,7 @@ class ClubActions extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
-  Future<String> createClub(String name) async {
+  Future<String> createClub(String name, List<String> categories) async {
     final user = ref.read(currentUserProvider);
     if (user == null) throw Exception('Not signed in');
     final profile = ref.read(userProfileProvider).asData?.value;
@@ -89,9 +89,10 @@ class ClubActions extends AsyncNotifier<void> {
       'code': code,
       'creatorUid': user.uid,
       'createdAt': FieldValue.serverTimestamp(),
-      'memberCount': 0,  // onMemberJoin Cloud Function increments this
+      'memberCount': 0, // onMemberJoin Cloud Function increments this
       'clubRank': 0,
       'clubScore': 0,
+      'categories': categories,
     });
 
     batch.set(clubRef.collection('members').doc(user.uid), {

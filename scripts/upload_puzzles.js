@@ -21,7 +21,16 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-const CATEGORIES = ['Sports', 'Entertainment', 'Pop Culture', 'Social Media'];
+const CATEGORIES = [
+  'Sports',
+  'Entertainment',
+  'Pop Culture',
+  'Social Media',
+  'Science',
+  'Math',
+  'Tech',
+  'World Facts'
+];
 const FIRESTORE_BATCH_LIMIT = 490; // Stay under 500 op limit
 
 // Stable, content-derived document ID — natural deduplication.

@@ -82,6 +82,7 @@ class ClubRankScreen extends ConsumerWidget {
                 _ClubStatsHeader(
                   memberCount: memberCount,
                   clubRank: clubRank,
+                  categories: clubAsync.asData?.value?.categories ?? ['ALL'],
                 ),
                 Expanded(
                   child: SingleChildScrollView(
@@ -120,24 +121,63 @@ class ClubRankScreen extends ConsumerWidget {
 class _ClubStatsHeader extends StatelessWidget {
   final int memberCount;
   final int clubRank;
-  const _ClubStatsHeader({required this.memberCount, required this.clubRank});
+  final List<String> categories;
+  const _ClubStatsHeader({
+    required this.memberCount,
+    required this.clubRank,
+    required this.categories,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      color: theme.appColors.background,
-      child: Row(
-        children: [
-          _StatPill(label: '$memberCount MEMBERS', color: theme.appColors.secondary!),
-          const SizedBox(width: 8),
-          _StatPill(
-            label: clubRank == 0 ? 'UNRANKED' : 'RANK #$clubRank',
-            color: theme.appColors.primary!,
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+          color: theme.appColors.background,
+          child: Row(
+            children: [
+              _StatPill(label: '$memberCount MEMBERS', color: theme.appColors.secondary!),
+              const SizedBox(width: 8),
+              _StatPill(
+                label: clubRank == 0 ? 'UNRANKED' : 'RANK #$clubRank',
+                color: theme.appColors.primary!,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        Container(
+          height: 34,
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            itemCount: categories.length,
+            itemBuilder: (context, i) => Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.appColors.surface,
+                  border: Border.all(color: theme.appColors.border!, width: 1.5),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Center(
+                  child: Text(
+                    categories[i].toUpperCase(),
+                    style: theme.appTextTheme.body?.copyWith(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

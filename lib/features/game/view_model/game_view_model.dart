@@ -7,7 +7,18 @@ import '../data/hardcoded_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/user_provider.dart';
 
-const _kValidCategories = {'Sports', 'Entertainment', 'Pop Culture', 'Social Media'};
+const _kValidCategories = {
+  'Sports',
+  'Entertainment',
+  'Pop Culture',
+  'Social Media',
+  'Science',
+  'Math',
+  'Tech',
+  'World Facts'
+};
+
+const kMatchSize = 10;
 
 class GameState {
   final Question? currentQuestion;
@@ -25,6 +36,7 @@ class GameState {
   final int remainingTime;
   final int currentStreak;
   final String selectedCategory;
+  final List<String> selectedSubCategories;
   final int skipsUsedToday;
 
   GameState({
@@ -43,6 +55,16 @@ class GameState {
     this.remainingTime = 30,
     this.currentStreak = 0,
     this.selectedCategory = 'ALL',
+    this.selectedSubCategories = const [
+      'Sports',
+      'Entertainment',
+      'Pop Culture',
+      'Social Media',
+      'Science',
+      'Math',
+      'Tech',
+      'World Facts'
+    ],
     this.skipsUsedToday = 0,
   });
 
@@ -64,6 +86,7 @@ class GameState {
     int? remainingTime,
     int? currentStreak,
     String? selectedCategory,
+    List<String>? selectedSubCategories,
     int? skipsUsedToday,
     bool clearQuestion = false,
   }) {
@@ -83,6 +106,7 @@ class GameState {
       remainingTime: remainingTime ?? this.remainingTime,
       currentStreak: currentStreak ?? this.currentStreak,
       selectedCategory: selectedCategory ?? this.selectedCategory,
+      selectedSubCategories: selectedSubCategories ?? this.selectedSubCategories,
       skipsUsedToday: skipsUsedToday ?? this.skipsUsedToday,
     );
   }
@@ -127,9 +151,10 @@ class GameViewModel extends Notifier<GameState> {
     _startTimer();
   }
 
-  Future<void> setCategory(String category) async {
+  Future<void> setCategory(String category, [List<String>? subCategories]) async {
     state = state.copyWith(
       selectedCategory: category,
+      selectedSubCategories: subCategories ?? [],
       currentQuestionIndex: 0,
       matchScore: 0,
       perfectCount: 0,
@@ -146,6 +171,7 @@ class GameViewModel extends Notifier<GameState> {
   Future<void> playDailySort() async {
     state = state.copyWith(
       selectedCategory: 'Daily Sort',
+      selectedSubCategories: [],
       currentQuestionIndex: 0,
       matchScore: 0,
       perfectCount: 0,
@@ -171,7 +197,8 @@ class GameViewModel extends Notifier<GameState> {
   Future<void> _loadQuestions(String category) async {
     try {
       final db = FirebaseFirestore.instance;
-      List<Question> pool;
+      final user = ref.read(currentUserProvider);
+      List<Question> pool = [];
 
       if (category == 'Daily Sort') {
         final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
@@ -181,44 +208,79 @@ class GameViewModel extends Notifier<GameState> {
           final ids = List<String>.from(dailySnap.data()!['questionIds'] ?? []);
           final snaps = await Future.wait(ids.map((id) => db.collection('questions').doc(id).get()));
           pool = snaps.where((s) => s.exists).map(Question.fromDoc).toList();
-          // Strip out any old-category questions from Firestore
           pool = pool.where((q) => _kValidCategories.contains(q.category)).toList();
-        } else {
-          pool = [];
         }
         if (pool.isEmpty) pool = _hardcodedForCategory('ALL');
       } else if (category == 'ALL') {
-        final snap = await db.collection('questions').where('isActive', isEqualTo: true).limit(100).get();
-        pool = snap.docs.map(Question.fromDoc).toList();
-        pool = pool.where((q) => _kValidCategories.contains(q.category)).toList()..shuffle();
+        // Fetch ~2-3 questions from each selected sub-category to get a diverse mix for the match.
+        final List<String> cats = state.selectedSubCategories.isNotEmpty
+            ? state.selectedSubCategories
+            : _kValidCategories.toList();
+
+        final List<List<Question>> catPools = await Future.wait(cats.map((cat) async {
+          // Get persistent answered IDs for this category
+          Set<String> answered = {};
+          if (user != null) {
+            final p = await db.collection('users').doc(user.uid).collection('categoryProgress').doc(cat).get();
+            if (p.exists) answered = Set<String>.from(p.data()?['answeredIds'] ?? []);
+          }
+
+          final snap = await db.collection('questions')
+              .where('category', isEqualTo: cat)
+              .where('isActive', isEqualTo: true)
+              .limit(10) // Small limit per category to build the "ALL" pool
+              .get();
+          
+          return snap.docs.map(Question.fromDoc)
+              .where((q) => !answered.contains(q.id))
+              .toList();
+        }));
+
+        pool = catPools.expand((x) => x).toList()..shuffle();
         if (pool.isEmpty) pool = _hardcodedForCategory('ALL');
       } else {
+        // Single Category
+        Set<String> persistentAnsweredIds = {};
+        if (user != null) {
+          final progressSnap = await db
+              .collection('users')
+              .doc(user.uid)
+              .collection('categoryProgress')
+              .doc(category)
+              .get();
+          if (progressSnap.exists) {
+            persistentAnsweredIds = Set<String>.from(progressSnap.data()?['answeredIds'] ?? []);
+          }
+        }
+
         final snap = await db.collection('questions')
             .where('category', isEqualTo: category)
             .where('isActive', isEqualTo: true)
             .get();
-        pool = snap.docs.map(Question.fromDoc).toList()..shuffle();
+        pool = snap.docs.map(Question.fromDoc)
+            .where((q) => !persistentAnsweredIds.contains(q.id))
+            .toList()..shuffle();
+        
         if (pool.isEmpty) pool = _hardcodedForCategory(category);
       }
 
-      // Always guarantee at least 5 questions so a match can never end early
-      if (pool.length < 5) {
+      // Guarantee at least kMatchSize (10) questions
+      if (pool.length < kMatchSize) {
         final fallback = _hardcodedForCategory(
           (category == 'Daily Sort' || category == 'ALL') ? 'ALL' : category,
         )..shuffle();
         final existingIds = pool.map((q) => q.id).toSet();
         final extras = fallback
             .where((q) => !existingIds.contains(q.id))
-            .take(5 - pool.length)
+            .take(kMatchSize - pool.length)
             .toList();
         pool = [...pool, ...extras];
       }
 
-      // Filter out questions already seen this session for this category.
-      // If too few unseen remain, reset seen history and use the full pool.
+      // Session deduplication
       final seen = _seenIds.putIfAbsent(category, () => {});
       final unseen = pool.where((q) => !seen.contains(q.id)).toList();
-      if (unseen.length >= 5) {
+      if (unseen.length >= kMatchSize) {
         _questionPool = unseen;
       } else {
         seen.clear();
@@ -237,21 +299,24 @@ class GameViewModel extends Notifier<GameState> {
       Future.microtask(() async {
         await _loadQuestions(state.selectedCategory);
         state = state.copyWith(isLoadingQuestions: false);
-        // Only recurse if we actually got questions — prevents infinite loop
         if (_questionPool.isNotEmpty) loadNextQuestion();
       });
       return;
     }
 
-    if (state.currentQuestionIndex < 5 && state.currentQuestionIndex < _questionPool.length) {
+    if (state.currentQuestionIndex < kMatchSize && state.currentQuestionIndex < _questionPool.length) {
       final question = _questionPool[state.currentQuestionIndex];
       _seenIds.putIfAbsent(state.selectedCategory, () => {}).add(question.id);
+      
+      // High stakes: 20 seconds for Math and Tech, 30 for others
+      final initialTime = (question.category == 'Math' || question.category == 'Tech') ? 20 : 30;
+
       state = state.copyWith(
         currentQuestion: question,
         userOrder: List<String>.from(question.items)..shuffle(),
         cardScores: [],
         isAnswered: false,
-        remainingTime: 30,
+        remainingTime: initialTime,
         currentQuestionIndex: state.currentQuestionIndex + 1,
       );
       if (state.isGameStarted) _startTimer();
@@ -398,7 +463,10 @@ class GameViewModel extends Notifier<GameState> {
       perfectCount: state.perfectCount + (perfect ? 1 : 0),
     );
 
-    if (state.currentQuestionIndex >= 5) {
+    // Track category progress in Firestore
+    _recordQuestionProgress(state.currentQuestion!);
+
+    if (state.currentQuestionIndex >= kMatchSize) {
       Future.delayed(const Duration(milliseconds: 2500), () {
         if (state.isAnswered) _completeMatch();
       });
@@ -418,5 +486,42 @@ class GameViewModel extends Notifier<GameState> {
     );
     loadNextQuestion();
   }
-}
 
+  Future<void> _recordQuestionProgress(Question question) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null || question.category == 'Daily Sort') return;
+
+    final db = FirebaseFirestore.instance;
+    final progressDoc = db
+        .collection('users')
+        .doc(user.uid)
+        .collection('categoryProgress')
+        .doc(question.category);
+
+    try {
+      await progressDoc.set({
+        'answeredIds': FieldValue.arrayUnion([question.id]),
+        'lastAnsweredAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Check if category is now completed
+      final totalSnap = await db
+          .collection('questions')
+          .where('category', isEqualTo: question.category)
+          .where('isActive', isEqualTo: true)
+          .count()
+          .get();
+      
+      final currentSnap = await progressDoc.get();
+      final answeredIds = List<String>.from(currentSnap.data()?['answeredIds'] ?? []);
+
+      if (answeredIds.length >= totalSnap.count!) {
+        await db.collection('users').doc(user.uid).update({
+          'completedCategories.${question.category}': true,
+        });
+      }
+    } catch (e) {
+      // Silent fail
+    }
+  }
+}

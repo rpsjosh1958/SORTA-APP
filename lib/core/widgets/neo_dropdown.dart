@@ -7,12 +7,14 @@ class NeoDropdownItem<T> {
   final String label;
   final IconData? icon;
   final Color? accentColor;
+  final bool isCompleted;
 
   const NeoDropdownItem({
     required this.value,
     required this.label,
     this.icon,
     this.accentColor,
+    this.isCompleted = false,
   });
 }
 
@@ -189,12 +191,15 @@ class _NeoDropdownTile<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = item.accentColor ?? theme.appColors.onSurface!;
+    final accent = item.isCompleted 
+        ? Colors.grey 
+        : (item.accentColor ?? theme.appColors.onSurface!);
+    
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         InkWell(
-          onTap: onTap,
+          onTap: item.isCompleted ? null : onTap,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: isSelected
@@ -216,6 +221,23 @@ class _NeoDropdownTile<T> extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (item.isCompleted)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade400,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.black, width: 1.5),
+                    ),
+                    child: const Text(
+                      'DONE',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 if (isSelected)
                   Icon(Icons.check, size: 16, color: theme.appColors.primary),
               ],

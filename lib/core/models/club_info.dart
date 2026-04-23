@@ -6,6 +6,7 @@ class ClubInfo {
   final String code;
   final int rank;
   final int memberCount;
+  final List<String> categories;
 
   const ClubInfo({
     required this.id,
@@ -13,6 +14,7 @@ class ClubInfo {
     required this.code,
     required this.rank,
     required this.memberCount,
+    this.categories = const ['ALL'],
   });
 
   factory ClubInfo.fromDoc(DocumentSnapshot doc) {
@@ -23,6 +25,7 @@ class ClubInfo {
       code: d['code'] as String? ?? '',
       rank: d['clubRank'] as int? ?? 0,
       memberCount: d['memberCount'] as int? ?? 0,
+      categories: List<String>.from(d['categories'] ?? ['ALL']),
     );
   }
 }
