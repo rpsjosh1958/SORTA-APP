@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:avatar_plus/avatar_plus.dart';
 import '../../../core/models/challenge.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/challenge_provider.dart';
@@ -560,6 +561,7 @@ class _VersusCountdownViewState extends ConsumerState<_VersusCountdownView>
                       offset: Offset(shakeOffset, 0),
                       child: _ClashCard(
                           name: widget.challenge.challengerName,
+                          avatarSeed: widget.challenge.challengerUid, // Fallback to UID for now
                           color: theme.appColors.primary!),
                     ),
                   ),
@@ -579,6 +581,7 @@ class _VersusCountdownViewState extends ConsumerState<_VersusCountdownView>
                       offset: Offset(-shakeOffset, 0),
                       child: _ClashCard(
                           name: widget.challenge.opponentName,
+                          avatarSeed: widget.challenge.opponentUid, // Fallback to UID
                           color: theme.appColors.secondary!),
                     ),
                   ),
@@ -608,8 +611,9 @@ class _VersusCountdownViewState extends ConsumerState<_VersusCountdownView>
 
 class _ClashCard extends StatelessWidget {
   final String name;
+  final String avatarSeed;
   final Color color;
-  const _ClashCard({required this.name, required this.color});
+  const _ClashCard({required this.name, required this.avatarSeed, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -626,14 +630,32 @@ class _ClashCard extends StatelessWidget {
               color: theme.appColors.shadow!, offset: const Offset(4, 4))
         ],
       ),
-      child: Text(
-        name,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 14,
-            overflow: TextOverflow.ellipsis),
-        maxLines: 2,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            height: 40,
+            width: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.black.withOpacity(0.2), width: 1.5),
+            ),
+            child: ClipOval(
+              child: AvatarPlus(avatarSeed, width: 40, height: 40),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+                color: Colors.black,
+                overflow: TextOverflow.ellipsis),
+            maxLines: 1,
+          ),
+        ],
       ),
     );
   }
@@ -716,6 +738,7 @@ class _VersusGameViewState extends ConsumerState<_VersusGameView>
             Expanded(
               child: _OpponentStrip(
                 name: widget.challenge.opponentNameFor(myUid),
+                avatarSeed: opponentUid, // Fallback for now
                 score: opponentScore,
                 questionsDone: opponentProgress?.answers.length ?? 0,
                 isDone: opponentDone,
@@ -727,7 +750,7 @@ class _VersusGameViewState extends ConsumerState<_VersusGameView>
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Q${gs.currentQuestionIndex + 1}/5',
+                  Text('Q${gs.currentQuestionIndex + 1}/10',
                       style: theme.appTextTheme.body
                           ?.copyWith(fontWeight: FontWeight.w900, fontSize: 10)),
                   Text(
@@ -903,11 +926,13 @@ class _VersusGameViewState extends ConsumerState<_VersusGameView>
 
 class _OpponentStrip extends StatelessWidget {
   final String name;
+  final String avatarSeed;
   final int score;
   final int questionsDone;
   final bool isDone;
   const _OpponentStrip({
     required this.name,
+    required this.avatarSeed,
     required this.score,
     required this.questionsDone,
     required this.isDone,
@@ -927,20 +952,37 @@ class _OpponentStrip extends StatelessWidget {
           BoxShadow(color: theme.appColors.shadow!, offset: const Offset(2, 2))
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(name,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 11,
-                  overflow: TextOverflow.ellipsis)),
-          Text(
-            isDone
-                ? 'DONE · ${NumberFormat('#,###').format(score)}'
-                : 'Q$questionsDone/5 · ${NumberFormat('#,###').format(score)}',
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+          Container(
+            height: 24,
+            width: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.black.withOpacity(0.2), width: 1),
+            ),
+            child: ClipOval(
+              child: AvatarPlus(avatarSeed, width: 24, height: 24),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(name,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 11,
+                      overflow: TextOverflow.ellipsis)),
+              Text(
+                isDone
+                    ? 'DONE · ${NumberFormat('#,###').format(score)}'
+                    : 'Q$questionsDone/10 · ${NumberFormat('#,###').format(score)}',
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
         ],
       ),
@@ -1082,10 +1124,12 @@ class _VersusResultViewState extends ConsumerState<_VersusResultView> {
                   // Score comparison
                   _ScoreRow(
                     leftName: widget.challenge.challengerName,
+                    leftAvatar: widget.challenge.challengerUid, // Fallback
+                    rightName: widget.challenge.opponentName,
+                    rightAvatar: widget.challenge.opponentUid, // Fallback
                     leftScore: answersMap[widget.challenge.challengerUid]
                             ?.totalScore ??
                         0,
-                    rightName: widget.challenge.opponentName,
                     rightScore:
                         answersMap[widget.challenge.opponentUid]?.totalScore ??
                             0,
@@ -1215,12 +1259,15 @@ class _VersusResultViewState extends ConsumerState<_VersusResultView> {
 
 class _ScoreRow extends StatelessWidget {
   final String leftName, rightName;
+  final String leftAvatar, rightAvatar;
   final int leftScore, rightScore;
   final String myUid, challengerUid;
   const _ScoreRow({
     required this.leftName,
-    required this.leftScore,
+    required this.leftAvatar,
     required this.rightName,
+    required this.rightAvatar,
+    required this.leftScore,
     required this.rightScore,
     required this.myUid,
     required this.challengerUid,
@@ -1237,6 +1284,7 @@ class _ScoreRow extends StatelessWidget {
         Expanded(
           child: _ScoreCard(
             name: leftName,
+            avatarSeed: leftAvatar,
             score: leftScore,
             isWinner: leftWins,
             isMe: myUid == challengerUid,
@@ -1251,6 +1299,7 @@ class _ScoreRow extends StatelessWidget {
         Expanded(
           child: _ScoreCard(
             name: rightName,
+            avatarSeed: rightAvatar,
             score: rightScore,
             isWinner: rightWins,
             isMe: myUid != challengerUid,
@@ -1263,10 +1312,12 @@ class _ScoreRow extends StatelessWidget {
 
 class _ScoreCard extends StatelessWidget {
   final String name;
+  final String avatarSeed;
   final int score;
   final bool isWinner, isMe;
   const _ScoreCard({
     required this.name,
+    required this.avatarSeed,
     required this.score,
     required this.isWinner,
     required this.isMe,
@@ -1288,6 +1339,18 @@ class _ScoreCard extends StatelessWidget {
       ),
       child: Column(
         children: [
+          Container(
+            height: 44,
+            width: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+            ),
+            child: ClipOval(
+              child: AvatarPlus(avatarSeed, width: 44, height: 44),
+            ),
+          ),
+          const SizedBox(height: 8),
           Text(
             name + (isMe ? '\n(you)' : ''),
             style: const TextStyle(

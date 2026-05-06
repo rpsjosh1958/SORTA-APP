@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:avatar_plus/avatar_plus.dart';
 import '../../../core/models/club_info.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/club_provider.dart';
@@ -286,6 +286,8 @@ class _PodiumCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final textColor = isMe ? Colors.white : theme.appColors.onSurface!;
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
@@ -298,24 +300,29 @@ class _PodiumCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text('#${member.rank}', style: theme.appTextTheme.heading?.copyWith(fontSize: 20)),
+          Text('#${member.rank}', style: theme.appTextTheme.heading?.copyWith(fontSize: 20, color: textColor)),
           const SizedBox(height: 6),
-          SvgPicture.asset(
-            'assets/icons/user.svg',
-            width: 26,
-            height: 26,
-            colorFilter: ColorFilter.mode(theme.appColors.onSurface!, BlendMode.srcIn),
+          Container(
+            height: 40,
+            width: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: textColor.withOpacity(0.5), width: 1.5),
+            ),
+            child: ClipOval(
+              child: AvatarPlus(member.avatarSeed, width: 40, height: 40),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             isMe ? '${member.displayName} ★' : member.displayName,
-            style: theme.appTextTheme.body?.copyWith(fontSize: 11),
+            style: theme.appTextTheme.body?.copyWith(fontSize: 11, color: textColor),
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
           ),
           Text(
             NumberFormat('#,###').format(member.clubScore),
-            style: theme.appTextTheme.body?.copyWith(fontSize: 12, fontWeight: FontWeight.w900),
+            style: theme.appTextTheme.body?.copyWith(fontSize: 12, fontWeight: FontWeight.w900, color: textColor),
           ),
         ],
       ),
@@ -332,18 +339,30 @@ class _MemberRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final rowColor = isMe 
+        ? theme.appColors.primary
+        : theme.appColors.surface;
+    final borderColor = isMe 
+        ? theme.appColors.primary! 
+        : theme.appColors.border!;
+    final textColor = isMe ? Colors.white : theme.appColors.onSurface!;
+
     return Container(
       margin: EdgeInsets.only(bottom: isLast ? 0 : 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isMe ? theme.appColors.secondary!.withOpacity(0.15) : theme.appColors.surface,
+        color: rowColor,
         border: Border.all(
-          color: isMe ? theme.appColors.secondary! : theme.appColors.border!,
+          color: borderColor,
           width: isMe ? 3 : 2,
         ),
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: theme.appColors.shadow!, offset: const Offset(3, 3), blurRadius: 0),
+          BoxShadow(
+            color: theme.appColors.shadow!, 
+            offset: isMe ? const Offset(4, 4) : const Offset(3, 3), 
+            blurRadius: 0,
+          ),
         ],
       ),
       child: Row(
@@ -352,28 +371,42 @@ class _MemberRow extends StatelessWidget {
             width: 36,
             child: Text(
               '#${member.rank}',
-              style: theme.appTextTheme.body?.copyWith(fontSize: 13, fontWeight: FontWeight.w900),
+              style: theme.appTextTheme.body?.copyWith(
+                fontSize: 13, 
+                fontWeight: isMe ? FontWeight.w900 : FontWeight.bold,
+                color: textColor,
+              ),
             ),
           ),
-          SvgPicture.asset(
-            'assets/icons/user.svg',
-            width: 18,
-            height: 18,
-            colorFilter: ColorFilter.mode(theme.appColors.onSurface!, BlendMode.srcIn),
+          Container(
+            height: 28,
+            width: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: textColor.withOpacity(0.3), width: 1),
+            ),
+            child: ClipOval(
+              child: AvatarPlus(member.avatarSeed, width: 28, height: 28),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isMe ? '${member.displayName} ★' : member.displayName,
+              isMe ? '${member.displayName} (YOU)' : member.displayName,
               style: theme.appTextTheme.body?.copyWith(
                 fontSize: 14,
                 fontWeight: isMe ? FontWeight.w900 : FontWeight.bold,
+                color: textColor,
               ),
             ),
           ),
           Text(
             NumberFormat('#,###').format(member.clubScore),
-            style: theme.appTextTheme.body?.copyWith(fontSize: 14, fontWeight: FontWeight.w900),
+            style: theme.appTextTheme.body?.copyWith(
+              fontSize: 14, 
+              fontWeight: isMe ? FontWeight.w900 : FontWeight.bold,
+              color: textColor,
+            ),
           ),
         ],
       ),

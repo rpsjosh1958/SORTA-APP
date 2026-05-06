@@ -15,12 +15,13 @@ const _testClub = ClubInfo(
   code: 'ABC123',
   rank: 14,
   memberCount: 3,
+  categories: ['ALL'],
 );
 
 final _testMembers = [
-  const ClubMember(uid: 'u1', displayName: 'JoshT', clubScore: 4280, rank: 1),
-  const ClubMember(uid: 'u2', displayName: 'SarahK', clubScore: 3900, rank: 2),
-  const ClubMember(uid: 'u3', displayName: 'Mike22', clubScore: 3400, rank: 3),
+  const ClubMember(uid: 'u1', displayName: 'JoshT', clubScore: 4280, rank: 1, avatarSeed: 'u1'),
+  const ClubMember(uid: 'u2', displayName: 'SarahK', clubScore: 3900, rank: 2, avatarSeed: 'u2'),
+  const ClubMember(uid: 'u3', displayName: 'Mike22', clubScore: 3400, rank: 3, avatarSeed: 'u3'),
 ];
 
 Widget _buildSubject() => ProviderScope(

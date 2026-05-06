@@ -18,6 +18,7 @@ class Challenge {
   final String opponentName;
   final ChallengeStatus status;
   final List<String> questionIds;
+  final List<String> finishedUids;
   final bool challengerReady;
   final bool opponentReady;
   final Timestamp? createdAt;
@@ -32,6 +33,7 @@ class Challenge {
     required this.opponentName,
     required this.status,
     required this.questionIds,
+    this.finishedUids = const [],
     required this.challengerReady,
     required this.opponentReady,
     this.createdAt,
@@ -49,6 +51,7 @@ class Challenge {
       opponentName: d['opponentName'] as String? ?? 'Player',
       status: _statusFrom(d['status'] as String? ?? 'pending'),
       questionIds: List<String>.from(d['questionIds'] as List? ?? []),
+      finishedUids: List<String>.from(d['finishedUids'] as List? ?? []),
       challengerReady: d['challengerReady'] as bool? ?? false,
       opponentReady: d['opponentReady'] as bool? ?? false,
       createdAt: d['createdAt'] as Timestamp?,

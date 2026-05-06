@@ -153,7 +153,7 @@ class ChallengeActions extends AsyncNotifier<void> {
     if (qSnap.docs.length < 5) return 'Not enough questions available';
 
     final shuffled = qSnap.docs.toList()..shuffle();
-    final questionIds = shuffled.take(5).map((d) => d.id).toList();
+    final questionIds = shuffled.take(10).map((d) => d.id).toList();
 
     await _db.collection('challenges').doc().set({
       'playerUids': [user.uid, opponentUid],
@@ -163,6 +163,7 @@ class ChallengeActions extends AsyncNotifier<void> {
       'opponentName': opponentName,
       'status': 'pending',
       'questionIds': questionIds,
+      'finishedUids': [],
       'challengerReady': false,
       'opponentReady': false,
       'createdAt': FieldValue.serverTimestamp(),
@@ -218,11 +219,8 @@ class ChallengeActions extends AsyncNotifier<void> {
     List<VersusAnswerRecord> answers,
     int totalScore,
   ) async {
-    final answerRef = _db
-        .collection('challenges')
-        .doc(challengeId)
-        .collection('answers')
-        .doc(myUid);
+    final challengeRef = _db.collection('challenges').doc(challengeId);
+    final answerRef = challengeRef.collection('answers').doc(myUid);
 
     await answerRef.set({
       'answers': answers.map((a) => a.toMap()).toList(),
@@ -230,19 +228,23 @@ class ChallengeActions extends AsyncNotifier<void> {
       'completedAt': FieldValue.serverTimestamp(),
     });
 
-    // If opponent also done, close the challenge.
-    final allAnswers = await _db
-        .collection('challenges')
-        .doc(challengeId)
-        .collection('answers')
-        .get();
-
-    if (allAnswers.docs.length >= 2) {
-      await _db
-          .collection('challenges')
-          .doc(challengeId)
-          .update({'status': 'complete'});
-    }
+    // Update finished list and check for completion
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(challengeRef);
+      if (!snap.exists) return;
+      
+      final currentFinished = List<String>.from(snap.data()?['finishedUids'] ?? []);
+      if (!currentFinished.contains(myUid)) {
+        currentFinished.add(myUid);
+        final updates = <String, dynamic>{
+          'finishedUids': FieldValue.arrayUnion([myUid]),
+        };
+        if (currentFinished.length >= 2) {
+          updates['status'] = 'complete';
+        }
+        tx.update(challengeRef, updates);
+      }
+    });
   }
 
   Future<void> requestRematch(String challengeId, String myUid) async {
@@ -267,7 +269,7 @@ class ChallengeActions extends AsyncNotifier<void> {
         .get();
 
     final shuffled = qSnap.docs.toList()..shuffle();
-    final questionIds = shuffled.take(5).map((d) => d.id).toList();
+    final questionIds = shuffled.take(10).map((d) => d.id).toList();
 
     await _db.collection('challenges').doc().set({
       'playerUids': old['playerUids'],
@@ -277,6 +279,7 @@ class ChallengeActions extends AsyncNotifier<void> {
       'opponentName': old['opponentName'],
       'status': 'accepted',
       'questionIds': questionIds,
+      'finishedUids': [],
       'challengerReady': false,
       'opponentReady': false,
       'createdAt': FieldValue.serverTimestamp(),

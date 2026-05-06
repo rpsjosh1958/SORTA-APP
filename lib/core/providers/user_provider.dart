@@ -16,6 +16,7 @@ class UserProfile {
   final List<String> clubIds;
   final String? primaryClubId;
   final Map<String, bool> completedCategories;
+  final String avatarSeed;
 
   const UserProfile({
     required this.uid,
@@ -28,6 +29,7 @@ class UserProfile {
     required this.dailySortDate,
     required this.clubIds,
     required this.primaryClubId,
+    required this.avatarSeed,
     this.completedCategories = const {},
   });
 
@@ -70,6 +72,7 @@ class UserProfile {
       clubIds: List<String>.from(d['clubIds'] ?? []),
       primaryClubId: d['primaryClubId'] as String?,
       completedCategories: Map<String, bool>.from(d['completedCategories'] ?? {}),
+      avatarSeed: d['avatarSeed'] as String? ?? doc.id,
     );
   }
 }
@@ -120,6 +123,58 @@ final userProfileProvider = StreamProvider<UserProfile?>((ref) {
       .snapshots()
       .map((snap) => snap.exists ? UserProfile.fromDoc(snap) : null);
 });
+
+final userActionsProvider = Provider((ref) => UserActions(ref));
+
+class UserActions {
+  final Ref ref;
+  UserActions(this.ref);
+
+  Future<void> updateAvatar(String seed) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .update({'avatarSeed': seed});
+  }
+
+  Future<String?> updateDisplayName(String name) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return 'Not signed in';
+
+    final cleanName = name.trim();
+    if (cleanName.length < 3) return 'Name too short';
+
+    final db = FirebaseFirestore.instance;
+    
+    try {
+      // Check if username is taken
+      final doc = await db.collection('usernames').doc(cleanName.toLowerCase()).get();
+      if (doc.exists && doc.data()?['uid'] != user.uid) {
+        return 'Username already taken';
+      }
+
+      final batch = db.batch();
+      
+      // Update username mapping
+      batch.set(db.collection('usernames').doc(cleanName.toLowerCase()), {
+        'uid': user.uid,
+        'email': user.email ?? '',
+      });
+
+      // Update user doc
+      batch.update(db.collection('users').doc(user.uid), {
+        'displayName': cleanName,
+      });
+
+      await batch.commit();
+      return null;
+    } catch (e) {
+      return 'Failed to update name';
+    }
+  }
+}
 
 final recentMatchesProvider = StreamProvider<List<MatchRecord>>((ref) {
   final user = ref.watch(currentUserProvider);

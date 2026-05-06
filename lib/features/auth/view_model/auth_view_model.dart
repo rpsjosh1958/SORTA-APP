@@ -82,7 +82,7 @@ class AuthViewModel extends Notifier<AuthState> {
         'uid': user.uid,
         'email': user.email ?? '',
         'displayName': name,
-        'avatarId': 'default',
+        'avatarSeed': user.uid,
         'level': 1,
         'totalScore': 0,
         'worldRank': 0,

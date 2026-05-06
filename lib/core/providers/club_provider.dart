@@ -7,25 +7,33 @@ import '../models/club_info.dart';
 
 // ─── Read providers ───────────────────────────────────────────────────────────
 
-final userClubsProvider = StreamProvider<List<ClubInfo>>((ref) async* {
-  final profile = ref.watch(userProfileProvider).asData?.value;
-  if (profile == null || profile.clubIds.isEmpty) {
-    yield [];
-    return;
-  }
-  final db = FirebaseFirestore.instance;
-  final snaps = await Future.wait(
-    profile.clubIds.map((id) => db.collection('clubs').doc(id).get()),
-  );
-  yield snaps.where((s) => s.exists).map(ClubInfo.fromDoc).toList();
+final clubsProvider = StreamProvider<List<ClubInfo>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('clubs')
+      .orderBy('clubScore', descending: true)
+      .snapshots()
+      .map((snap) => snap.docs.map(ClubInfo.fromDoc).toList());
 });
+
+final myClubsProvider = StreamProvider<List<ClubInfo>>((ref) {
+  final profile = ref.watch(userProfileProvider).asData?.value;
+  if (profile == null || profile.clubIds.isEmpty) return Stream.value([]);
+
+  return FirebaseFirestore.instance
+      .collection('clubs')
+      .where(FieldPath.documentId, whereIn: profile.clubIds)
+      .snapshots()
+      .map((snap) => snap.docs.map(ClubInfo.fromDoc).toList());
+});
+
+final userClubsProvider = myClubsProvider;
 
 final clubInfoProvider = StreamProvider.family<ClubInfo?, String>((ref, clubId) {
   return FirebaseFirestore.instance
       .collection('clubs')
       .doc(clubId)
       .snapshots()
-      .map((s) => s.exists ? ClubInfo.fromDoc(s) : null);
+      .map((snap) => snap.exists ? ClubInfo.fromDoc(snap) : null);
 });
 
 final clubMembersProvider =
@@ -37,15 +45,19 @@ final clubMembersProvider =
       .orderBy('clubScore', descending: true)
       .snapshots()
       .map((snap) => snap.docs.asMap().entries.map((e) {
-            final d = e.value.data();
-            return ClubMember(
-              uid: e.value.id,
-              displayName: d['displayName'] as String? ?? 'Player',
-              clubScore: d['clubScore'] as int? ?? 0,
-              rank: e.key + 1,
-            );
+            return ClubMember.fromDoc(e.value).copyWithRank(e.key + 1);
           }).toList());
 });
+
+extension on ClubMember {
+  ClubMember copyWithRank(int newRank) => ClubMember(
+        uid: uid,
+        displayName: displayName,
+        clubScore: clubScore,
+        rank: newRank,
+        avatarSeed: avatarSeed,
+      );
+}
 
 final worldRankProvider = StreamProvider<List<WorldRankEntry>>((ref) {
   return FirebaseFirestore.instance
@@ -54,15 +66,19 @@ final worldRankProvider = StreamProvider<List<WorldRankEntry>>((ref) {
       .limit(20)
       .snapshots()
       .map((snap) => snap.docs.asMap().entries.map((e) {
-            final d = e.value.data();
-            return WorldRankEntry(
-              rank: e.key + 1,
-              uid: e.value.id,
-              displayName: d['displayName'] as String? ?? 'Player',
-              totalScore: d['totalScore'] as int? ?? 0,
-            );
+            return WorldRankEntry.fromDoc(e.value).copyWithRank(e.key + 1);
           }).toList());
 });
+
+extension on WorldRankEntry {
+  WorldRankEntry copyWithRank(int newRank) => WorldRankEntry(
+        rank: newRank,
+        uid: uid,
+        displayName: displayName,
+        totalScore: totalScore,
+        avatarSeed: avatarSeed,
+      );
+}
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
@@ -70,6 +86,8 @@ final clubActionsProvider =
     AsyncNotifierProvider<ClubActions, void>(ClubActions.new);
 
 class ClubActions extends AsyncNotifier<void> {
+  final _db = FirebaseFirestore.instance;
+
   @override
   Future<void> build() async {}
 
@@ -79,10 +97,9 @@ class ClubActions extends AsyncNotifier<void> {
     final profile = ref.read(userProfileProvider).asData?.value;
     if (profile == null) throw Exception('Profile not loaded');
 
-    final db = FirebaseFirestore.instance;
     final code = _generateCode();
-    final clubRef = db.collection('clubs').doc();
-    final batch = db.batch();
+    final clubRef = _db.collection('clubs').doc();
+    final batch = _db.batch();
 
     batch.set(clubRef, {
       'name': name.trim(),
@@ -98,53 +115,39 @@ class ClubActions extends AsyncNotifier<void> {
     batch.set(clubRef.collection('members').doc(user.uid), {
       'uid': user.uid,
       'displayName': profile.displayName,
-      'totalScore': profile.totalScore,
+      'avatarSeed': profile.avatarSeed,
       'clubScore': 0,
       'joinedAt': FieldValue.serverTimestamp(),
     });
 
-    batch.update(db.collection('users').doc(user.uid), {
-      'clubIds': FieldValue.arrayUnion([clubRef.id]),
-      'primaryClubId': clubRef.id,
-    });
-
     await batch.commit();
-    return code; // caller shows this to the user
+    return code;
   }
 
-  /// Returns null on success, error message on failure.
   Future<String?> joinClub(String code) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return 'Not signed in';
     final profile = ref.read(userProfileProvider).asData?.value;
     if (profile == null) return 'Profile not loaded';
 
-    final db = FirebaseFirestore.instance;
-    final snap = await db
+    final snap = await _db
         .collection('clubs')
         .where('code', isEqualTo: code.trim().toUpperCase())
         .limit(1)
         .get();
 
-    if (snap.docs.isEmpty) return 'No club found with that code';
-
+    if (snap.docs.isEmpty) return 'Invalid code';
     final clubDoc = snap.docs.first;
-    if (profile.clubIds.contains(clubDoc.id)) return 'You are already in this club';
 
-    final batch = db.batch();
+    if (profile.clubIds.contains(clubDoc.id)) return 'Already in this club';
 
-    // memberCount is updated by the onMemberJoin Cloud Function trigger
+    final batch = _db.batch();
     batch.set(clubDoc.reference.collection('members').doc(user.uid), {
       'uid': user.uid,
       'displayName': profile.displayName,
-      'totalScore': profile.totalScore,
+      'avatarSeed': profile.avatarSeed,
       'clubScore': 0,
       'joinedAt': FieldValue.serverTimestamp(),
-    });
-
-    batch.update(db.collection('users').doc(user.uid), {
-      'clubIds': FieldValue.arrayUnion([clubDoc.id]),
-      if (profile.primaryClubId == null) 'primaryClubId': clubDoc.id,
     });
 
     await batch.commit();

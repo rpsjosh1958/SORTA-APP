@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
+import 'package:avatar_plus/avatar_plus.dart';
 import '../../../core/models/club_info.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/club_provider.dart';
@@ -116,11 +116,16 @@ class _PodiumCard extends StatelessWidget {
         children: [
           Text('#${entry.rank}', style: theme.appTextTheme.heading?.copyWith(fontSize: 20, color: textColor)),
           const SizedBox(height: 6),
-          SvgPicture.asset(
-            'assets/icons/user.svg',
-            width: 26,
-            height: 26,
-            colorFilter: ColorFilter.mode(textColor, BlendMode.srcIn),
+          Container(
+            height: 40,
+            width: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: textColor.withOpacity(0.5), width: 1.5),
+            ),
+            child: ClipOval(
+              child: AvatarPlus(entry.avatarSeed, width: 40, height: 40),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -189,13 +194,15 @@ class _RankRow extends StatelessWidget {
               ),
             ),
           ),
-          SvgPicture.asset(
-            'assets/icons/user.svg',
-            width: 18,
-            height: 18,
-            colorFilter: ColorFilter.mode(
-              textColor, 
-              BlendMode.srcIn,
+          Container(
+            height: 28,
+            width: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: textColor.withOpacity(0.3), width: 1),
+            ),
+            child: ClipOval(
+              child: AvatarPlus(entry.avatarSeed, width: 28, height: 28),
             ),
           ),
           const SizedBox(width: 10),

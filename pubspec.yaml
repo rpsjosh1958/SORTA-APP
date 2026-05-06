@@ -20,6 +20,7 @@ dependencies:
   cloud_firestore: ^4.17.5
   firebase_messaging: ^14.9.4
   rive: ^0.13.0
+  avatar_plus: ^0.0.5
 
 dev_dependencies:
   flutter_test:

@@ -49,6 +49,13 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Precache the logo so it appears instantly on the Login screen later
+    precacheImage(const AssetImage('assets/logo/sort_word_logo.png'), context);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
