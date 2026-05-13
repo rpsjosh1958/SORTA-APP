@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart'
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
-    if (kIsWeb) throw UnsupportedError('Web not supported.');
+    if (kIsWeb) return web;
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
@@ -14,6 +14,16 @@ class DefaultFirebaseOptions {
         throw UnsupportedError('Unsupported platform: $defaultTargetPlatform');
     }
   }
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyDQP8tnbhBM0_QX_NrC85wXJXTO_L8obX4',
+    authDomain: 'sorta-3df17.firebaseapp.com',
+    projectId: 'sorta-3df17',
+    storageBucket: 'sorta-3df17.firebasestorage.app',
+    messagingSenderId: '181388128583',
+    appId: '1:181388128583:web:4645397a98301c4552dc62',
+    measurementId: 'G-X0NXHN6QHS',
+  );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBAAsfFHn8k8Jj2ixDeXJh9Vo_hSSImabY',

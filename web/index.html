@@ -29,10 +29,26 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>sorta</title>
+  <title>SORTA</title>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- Firebase JS SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    const firebaseConfig = {
+      apiKey: "AIzaSyDQP8tnbhBM0_QX_NrC85wXJXTO_L8obX4",
+      authDomain: "sorta-3df17.firebaseapp.com",
+      projectId: "sorta-3df17",
+      storageBucket: "sorta-3df17.firebasestorage.app",
+      messagingSenderId: "181388128583",
+      appId: "1:181388128583:web:4645397a98301c4552dc62",
+      measurementId: "G-X0NXHN6QHS"
+    };
+    const app = initializeApp(firebaseConfig);
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

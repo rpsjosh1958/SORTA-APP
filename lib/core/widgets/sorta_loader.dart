@@ -1,44 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:rive/rive.dart';
 
-/// Drop-in loading widget. Uses the `idle` Rive animation when the .riv is
-/// present; falls back to a pulsing SORTA plank strip otherwise.
-class SortaLoader extends StatefulWidget {
+class SortaLoader extends StatelessWidget {
   const SortaLoader({super.key});
 
   @override
-  State<SortaLoader> createState() => _SortaLoaderState();
-}
-
-class _SortaLoaderState extends State<SortaLoader> {
-  bool _riveReady = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _tryLoad();
-  }
-
-  Future<void> _tryLoad() async {
-    try {
-      await rootBundle.load('assets/animations/sorta_idle.riv');
-      if (mounted) setState(() => _riveReady = true);
-    } catch (_) {}
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_riveReady) {
-      return const SizedBox(
-        width: 120,
-        height: 120,
-        child: RiveAnimation.asset('assets/animations/sorta_idle.riv'),
-      );
-    }
-    return const _PulsingPlanks();
-  }
+  Widget build(BuildContext context) => const _PulsingPlanks();
 }
 
 class _PulsingPlanks extends StatefulWidget {

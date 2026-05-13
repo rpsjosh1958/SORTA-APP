@@ -114,8 +114,9 @@ class AuthViewModel extends Notifier<AuthState> {
 
   String _message(String code) {
     switch (code) {
-      case 'user-not-found': return 'No account found with that email.';
-      case 'wrong-password': return 'Incorrect password.';
+      case 'invalid-credential':
+      case 'user-not-found':
+      case 'wrong-password': return 'Incorrect email or password.';
       case 'email-already-in-use': return 'That email is already registered.';
       case 'invalid-email': return 'Please enter a valid email.';
       case 'weak-password': return 'Password must be at least 6 characters.';

@@ -11,15 +11,12 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^2.6.1
-  google_fonts: ^6.2.1
+  google_fonts: ^8.0.0
   intl: ^0.20.2
   flutter_svg: ^2.0.10
-  # Firebase — SDK 10.x, compatible with Swift 5.9 / Xcode 15 / Flutter 3.22
-  firebase_core: ^2.32.0
-  firebase_auth: ^4.20.0
-  cloud_firestore: ^4.17.5
-  firebase_messaging: ^14.9.4
-  rive: ^0.13.0
+  firebase_core: ^3.0.0
+  firebase_auth: ^5.0.0
+  cloud_firestore: ^5.0.0
   avatar_plus: ^0.0.5
 
 dev_dependencies:
@@ -38,7 +35,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icons/
-    - assets/animations/
     - assets/logo/
   fonts:
     - family: SpaceGrotesk

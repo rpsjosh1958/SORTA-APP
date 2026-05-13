@@ -1,6 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,11 +11,6 @@ import 'firebase_options.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-}
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
@@ -25,13 +18,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // Request permission (iOS only — Android grants by default). Fails gracefully on simulator.
-  try {
-    await FirebaseMessaging.instance.requestPermission(alert: true, badge: true, sound: true);
-  } catch (_) {}
 
   runApp(
     const ProviderScope(
@@ -82,34 +68,6 @@ class _AuthGate extends ConsumerStatefulWidget {
 }
 
 class _AuthGateState extends ConsumerState<_AuthGate> {
-  // index 2 = VS tab
-  int _pendingNavIndex = -1;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Foreground push: show a SnackBar with the notification
-    FirebaseMessaging.onMessage.listen((msg) {
-      final notif = msg.notification;
-      if (notif == null || !mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${notif.title}: ${notif.body}'),
-          action: SnackBarAction(
-            label: 'VIEW',
-            onPressed: () => setState(() => _pendingNavIndex = 2),
-          ),
-        ),
-      );
-    });
-
-    // Background/terminated tap: navigate to VS tab
-    FirebaseMessaging.onMessageOpenedApp.listen((_) {
-      if (mounted) setState(() => _pendingNavIndex = 2);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
@@ -117,24 +75,13 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
     return authState.when(
       data: (user) {
         if (user == null) return const LoginScreen();
-        _saveFcmToken(user.uid);
-        return ProfileGate(initialIndex: _pendingNavIndex >= 0 ? _pendingNavIndex : 0);
+        return const 
+        ProfileGate(initialIndex: 0);
       },
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
       error: (_, __) => const LoginScreen(),
     );
-  }
-
-  void _saveFcmToken(String uid) async {
-    try {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null) return;
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .update({'fcmToken': token});
-    } catch (_) {}
   }
 }
