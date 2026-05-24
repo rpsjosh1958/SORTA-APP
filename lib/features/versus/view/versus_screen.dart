@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:avatar_plus/avatar_plus.dart';
+import '../../../core/widgets/navii_avatar.dart';
 import '../../../core/models/challenge.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/challenge_provider.dart';
@@ -641,7 +641,7 @@ class _ClashCard extends StatelessWidget {
               border: Border.all(color: Colors.black.withOpacity(0.2), width: 1.5),
             ),
             child: ClipOval(
-              child: AvatarPlus(avatarSeed, width: 40, height: 40),
+              child: NaviiAvatar(seed: avatarSeed, size: 40),
             ),
           ),
           const SizedBox(height: 8),
@@ -963,7 +963,7 @@ class _OpponentStrip extends StatelessWidget {
               border: Border.all(color: Colors.black.withOpacity(0.2), width: 1),
             ),
             child: ClipOval(
-              child: AvatarPlus(avatarSeed, width: 24, height: 24),
+              child: NaviiAvatar(seed: avatarSeed, size: 24),
             ),
           ),
           const SizedBox(width: 8),
@@ -1347,7 +1347,7 @@ class _ScoreCard extends StatelessWidget {
               border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
             ),
             child: ClipOval(
-              child: AvatarPlus(avatarSeed, width: 44, height: 44),
+              child: NaviiAvatar(seed: avatarSeed, size: 44),
             ),
           ),
           const SizedBox(height: 8),

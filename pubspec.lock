@@ -33,14 +33,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.11.0"
-  avatar_plus:
-    dependency: "direct main"
-    description:
-      name: avatar_plus
-      sha256: fcc16b58f0d4669084d719d0fc7dd69203aa05779ec1bdd0c95ecef85ff48367
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.5"
   boolean_selector:
     dependency: transitive
     description:

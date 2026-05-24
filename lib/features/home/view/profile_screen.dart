@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
-import 'package:avatar_plus/avatar_plus.dart';
+import '../../../core/widgets/navii_avatar.dart';
 import '../../../core/providers/user_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/dot_grid_background.dart';
@@ -135,7 +135,7 @@ class _ProfileHeader extends ConsumerWidget {
                     border: Border.all(color: theme.appColors.border!, width: 4),
                   ),
                   child: ClipOval(
-                    child: AvatarPlus(profile.avatarSeed, width: 110, height: 110),
+                    child: NaviiAvatar(seed: profile.avatarSeed, size: 110),
                   ),
                 ),
                 Container(
@@ -353,7 +353,7 @@ class _ChooseAvatarDialogState extends ConsumerState<_ChooseAvatarDialog> {
                   border: Border.all(color: theme.appColors.border!, width: 3),
                 ),
                 child: ClipOval(
-                  child: AvatarPlus(_tempSeed, width: 120, height: 120),
+                  child: NaviiAvatar(seed: _tempSeed, size: 120),
                 ),
               ),
               const SizedBox(height: 24),
@@ -383,7 +383,7 @@ class _ChooseAvatarDialogState extends ConsumerState<_ChooseAvatarDialog> {
                             width: isSelected ? 2.5 : 1.5),
                         shape: BoxShape.circle,
                       ),
-                      child: ClipOval(child: AvatarPlus(p, width: 48, height: 48)),
+                      child: ClipOval(child: NaviiAvatar(seed: p, size: 48)),
                     ),
                   );
                 }).toList(),

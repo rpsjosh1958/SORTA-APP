@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:avatar_plus/avatar_plus.dart';
+import '../../../core/widgets/navii_avatar.dart';
 import '../../../core/models/club_info.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/club_provider.dart';
@@ -124,7 +124,7 @@ class _PodiumCard extends StatelessWidget {
               border: Border.all(color: textColor.withOpacity(0.5), width: 1.5),
             ),
             child: ClipOval(
-              child: AvatarPlus(entry.avatarSeed, width: 40, height: 40),
+              child: NaviiAvatar(seed: entry.avatarSeed, size: 40),
             ),
           ),
           const SizedBox(height: 4),
@@ -202,7 +202,7 @@ class _RankRow extends StatelessWidget {
               border: Border.all(color: textColor.withOpacity(0.3), width: 1),
             ),
             child: ClipOval(
-              child: AvatarPlus(entry.avatarSeed, width: 28, height: 28),
+              child: NaviiAvatar(seed: entry.avatarSeed, size: 28),
             ),
           ),
           const SizedBox(width: 10),
