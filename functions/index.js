@@ -301,3 +301,49 @@ exports.seedDailySort = onSchedule('0 0 * * *', async () => {
 
   console.log(`Seeded daily sort for ${dateStr}:`, picked);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTUALLY: tally a fact-submission vote and promote/reject at the threshold.
+// This is the only path allowed to touch agreeCount/disagreeCount/status —
+// clients can only create their own vote doc, never edit these fields.
+// ─────────────────────────────────────────────────────────────────────────────
+const ACTUALLY_VOTE_THRESHOLD = 10;
+
+exports.actuallyOnFactVoteCreated = onDocumentCreated(
+  'actuallyFactSubmissions/{submissionId}/votes/{voterUid}',
+  async (event) => {
+    const { submissionId } = event.params;
+    const vote = event.data.data();
+    const submissionRef = db.collection('actuallyFactSubmissions').doc(submissionId);
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(submissionRef);
+      if (!snap.exists) return;
+      const submission = snap.data();
+      if (submission.status !== 'pending') return;
+
+      const agreeCount = (submission.agreeCount || 0) + (vote.agree ? 1 : 0);
+      const disagreeCount = (submission.disagreeCount || 0) + (vote.agree ? 0 : 1);
+      const voterUids = [...(submission.voterUids || []), event.params.voterUid];
+
+      const updates = { agreeCount, disagreeCount, voterUids };
+
+      if (agreeCount >= ACTUALLY_VOTE_THRESHOLD) {
+        updates.status = 'approved';
+        updates.resolvedAt = FieldValue.serverTimestamp();
+        const factRef = db.collection('actuallyFacts').doc();
+        tx.set(factRef, {
+          statement: submission.statement,
+          isTrue: submission.isTrue,
+          why: submission.why,
+          category: submission.category || null,
+        });
+      } else if (disagreeCount >= ACTUALLY_VOTE_THRESHOLD) {
+        updates.status = 'rejected';
+        updates.resolvedAt = FieldValue.serverTimestamp();
+      }
+
+      tx.update(submissionRef, updates);
+    });
+  }
+);
