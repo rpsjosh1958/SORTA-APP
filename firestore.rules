@@ -122,10 +122,15 @@ service cloud.firestore {
       // keep facts from repeating. Doc content is irrelevant, only its id.
       // Read is any authed user (not just the owner): building a versus
       // deck needs to read *both* players' seen-facts, not just the caller's.
+      // Update is allowed (not just create): the exhaustion fallback can
+      // re-serve an already-seen fact, and markFactSeen's plain .set({})
+      // then hits an existing doc — Firestore classifies that as an update,
+      // which would otherwise be denied even though the content never
+      // changes (always empty) and there's no security reason to block it.
       match /seenFacts/{factId} {
         allow read: if isAuthed();
-        allow create: if isOwner(uid);
-        allow update, delete: if false;
+        allow create, update: if isOwner(uid);
+        allow delete: if false;
       }
     }
 
